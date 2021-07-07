@@ -2,13 +2,20 @@ import telnetlib
 from os import environ
 import pika
 import json
+from time import sleep
 
 tn_ip = environ["TELNETSERVER"]
 tn_port = str(environ["TELNETPORT"])
 
 CHANNELNAME = "ingestormessages"
 
-connection = pika.BlockingConnection(pika.ConnectionParameters(environ["RABBITMQHOST"]))
+try:
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
+except Exception as e:
+    # give it some time
+    sleep(10)
+    connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
+
 channel = connection.channel()
 channel.queue_declare(queue=CHANNELNAME, durable=True)
 

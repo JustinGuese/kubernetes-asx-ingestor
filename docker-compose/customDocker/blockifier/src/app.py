@@ -15,7 +15,7 @@ try:
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
 except Exception as e:
     # give it some time
-    sleep(5)
+    sleep(10)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
 
 channel = connection.channel()
@@ -55,27 +55,34 @@ def tick2Block(df):
         # timestamp -> first timestamp of array
         # stock -> just take stockname of first
         # price -> mean(sub)
-    for symbol in df.symbol.unique():
-        subset = df[df["symbol"]==symbol]
-        if len(subset) == 0:
-            print("!!!!!!!!!!!!! length subset:", len(subset))
-        # build array
-        
-        timestamp = subset["timestamp"].values[0] # just first entry as timestamp
-        # symbol already there
-        price = np.median(subset["price"]) # median price
-        quantity = np.median(subset["quantity"]) # median quantity
-        volume = np.sum(subset["quantity"]) # volume equals sum of quantity
-        priceTimesQuantity = np.median(subset["priceTimesQuantity"]) # median priceTimesQuantity
-        totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
-        windowsSize = BLOCKTHRESHOLD
-        # TODO: track averages and set this in comparison, price since start etc
-        column_names = ["timestamp","symbol","price","quantity","volume","priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
-        columns = [timestamp,symbol,price,quantity,volume,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
-        combined.append(columns)
-    # if all symbols processed put them together into one huge df
-    combinedDf = pd.DataFrame(combined, columns=column_names)
-    return combinedDf
+    symbols = df.get("symbol")
+    if symbols is not None:
+        symbols = symbols.unique()
+        if len(symbols) > 0:
+            for symbol in df.symbol.unique():
+                subset = df[df["symbol"]==symbol]
+                if len(subset) == 0:
+                    print("!!!!!!!!!!!!! length subset:", len(subset))
+                # build array
+                
+                timestamp = subset["timestamp"].values[0] # just first entry as timestamp
+                # symbol already there
+                price = np.median(subset["price"]) # median price
+                quantity = np.median(subset["quantity"]) # median quantity
+                volume = np.sum(subset["quantity"]) # volume equals sum of quantity
+                priceTimesQuantity = np.median(subset["priceTimesQuantity"]) # median priceTimesQuantity
+                totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
+                windowsSize = BLOCKTHRESHOLD
+                # TODO: track averages and set this in comparison, price since start etc
+                column_names = ["timestamp","symbol","price","quantity","volume","priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
+                columns = [timestamp,symbol,price,quantity,volume,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
+                combined.append(columns)
+            # if all symbols processed put them together into one huge df
+            combinedDf = pd.DataFrame(combined, columns=column_names)
+            return combinedDf
+    else:
+        print("! invalid dataframe?",df.head())
+        return None
 
 def callback(ch, method, properties, body):
     global TMPDICTSTORE, lastTimestamp
@@ -95,13 +102,14 @@ def callback(ch, method, properties, body):
         df = pd.DataFrame(TMPDICTSTORE)
         # apply additional signals, shrink to x second window
         df = tick2Block(df)
-        
-        print("%s, yooo 5 sec durch du spasst. shape df: %s"%(str(body["TS"]),str(df.shape)))
-        # send newly created df to queue
-        out = df.to_json()
-        channel.basic_publish(exchange='',
-                routing_key=PUBLISHCHANNELNAME,
-                body=out)
+        # is df if valid, None if invalid
+        if isinstance(df, pd.DataFrame):
+            #  print("%s, yooo 5 sec durch du spasst. shape df: %s"%(str(body["TS"]),str(df.shape)))
+            # send newly created df to queue
+            out = df.to_json()
+            channel.basic_publish(exchange='',
+                    routing_key=PUBLISHCHANNELNAME,
+                    body=out)
         TMPDICTSTORE = []
         lastTimestamp = body["TS"]
     else:

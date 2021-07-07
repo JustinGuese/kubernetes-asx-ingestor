@@ -16,7 +16,7 @@ try:
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
 except Exception as e:
     # give it some time
-    sleep(5)
+    sleep(10)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
 
 channel = connection.channel()
@@ -25,12 +25,13 @@ queue = channel.queue_declare(queue=PUBLISHCHANNELNAME, durable=True)
 
 def callback(ch, method, properties, body):
     body = json.loads(body)
-    df = pd.DataFrame.from_dict(body) \
-    # TODO: translate linux ? string to datetime
-    df.to_sql('asx_data', engine,if_exists='append')
+    df = pd.DataFrame.from_dict(body) 
+    # convert unix timestamp to datetime
+    df["timestamp"] = pd.to_datetime(df['timestamp'],unit='ms')
+    df.to_sql('asx_data', engine,if_exists='append', index=False)
     # kam an, send ok
     ch.basic_ack(delivery_tag = method.delivery_tag)
-    print(df.head())
+    #  print(df.head())
 
 
 

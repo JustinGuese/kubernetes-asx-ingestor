@@ -1,6 +1,7 @@
 import tarfile
 import asyncio, telnetlib3
 from os import environ
+from time import sleep
 
 PORT = environ["PORT"]
 
@@ -12,6 +13,8 @@ for member in tar.getmembers():
         
 # for msg in content:
 #     print(msg.decode('ascii') + "|", end='')
+
+sleep(10)
 
 # join into one huge message
 for i in range(len(content)):
