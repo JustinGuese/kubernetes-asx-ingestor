@@ -6,15 +6,29 @@ services:
         restart: on-failure
         environment: 
             PORT: 6023
+            
+    rabbitmq:
+        image: rabbitmq:alpine
+        restart: always
+
     ingestor:
         image: jimingestor:latest
         build: ./customDocker/ingestor
         depends_on: 
             - fakeprod
+            - rabbitmq
         restart: on-failure
         environment: 
             TELNETSERVER: fakeprod
             TELNETPORT: 6023
-    rabbitmq:
-        image: rabbitmq:alpine
-        restart: always
+            RABBITMQHOST: rabbitmq
+
+    blockifier:
+        image: jimblockifier:latest
+        build: ./customDocker/blockifier
+        depends_on: 
+            - rabbitmq
+            - ingestor
+        restart: on-failure
+        environment: 
+            RABBITMQHOST: rabbitmq

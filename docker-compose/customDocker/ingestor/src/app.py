@@ -1,8 +1,25 @@
 import telnetlib
 from os import environ
+import pika
+import json
 
 tn_ip = environ["TELNETSERVER"]
 tn_port = str(environ["TELNETPORT"])
+
+CHANNELNAME = "ingestormessages"
+
+connection = pika.BlockingConnection(pika.ConnectionParameters(environ["RABBITMQHOST"]))
+channel = connection.channel()
+channel.queue_declare(queue=CHANNELNAME, durable=True)
+
+
+def string2Dict(message):
+    msg_dict = dict()
+    message = message.split(",")
+    for msg in message:
+        key,val = msg.split("=")
+        msg_dict.update({key:val})
+    return msg_dict
 
 def telnet():
     try:
@@ -13,6 +30,14 @@ def telnet():
     while True:
         msg = tn.read_until(b"|")
         msg = msg.decode("ascii")[:-1] # split the | off
-        print(msg)
-
+        # print(msg)
+        # send to rabbitmq
+        msg_dict = string2Dict(msg)
+        channel.basic_publish(exchange='',
+            routing_key=CHANNELNAME,
+            body=json.dumps(msg_dict),
+            properties=pika.BasicProperties(
+                delivery_mode = 2, # make message persistent
+            ))
+        
 telnet()
