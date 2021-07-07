@@ -1,0 +1,20 @@
+version: "3.9"
+services: 
+    fakeprod:
+        image: jimfakeproducer:latest
+        build: ./customDocker/fakeproducer
+        restart: on-failure
+        environment: 
+            PORT: 6023
+    ingestor:
+        image: jimingestor:latest
+        build: ./customDocker/ingestor
+        depends_on: 
+            - fakeprod
+        restart: on-failure
+        environment: 
+            TELNETSERVER: fakeprod
+            TELNETPORT: 6023
+    rabbitmq:
+        image: rabbitmq:alpine
+        restart: always
