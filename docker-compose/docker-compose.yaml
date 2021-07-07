@@ -29,7 +29,7 @@ services:
         ports:
             - 5432:5432
         volumes:
-            - psqldata:/var/lib/postgresql/data/pgdata
+            - psqldata:/var/lib/postgresql/data
         environment:
             POSTGRES_PASSWORD: huggi678213
 

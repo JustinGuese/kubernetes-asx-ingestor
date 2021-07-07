@@ -25,7 +25,9 @@ queue = channel.queue_declare(queue=PUBLISHCHANNELNAME, durable=True)
 
 def callback(ch, method, properties, body):
     body = json.loads(body)
-    df = pd.DataFrame.from_dict(body)
+    df = pd.DataFrame.from_dict(body) \
+    # TODO: translate linux ? string to datetime
+    df.to_sql('asx_data', engine,if_exists='append')
     # kam an, send ok
     ch.basic_ack(delivery_tag = method.delivery_tag)
     print(df.head())
