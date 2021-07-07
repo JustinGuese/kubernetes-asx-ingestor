@@ -4,6 +4,7 @@ from time import sleep
 from os import environ
 from datetime import datetime
 import pandas as pd
+import numpy as np 
 
 
 CHANNELNAME = "ingestormessages"
@@ -48,12 +49,33 @@ def translateEntries(dictionary):
         
         
 def tick2Block(df):
+    combined = []
     # takes pandas dataframe containing tick data, and somehow calculates per stock smart values
     # for symbol in df.symbol.unique:
         # timestamp -> first timestamp of array
         # stock -> just take stockname of first
         # price -> mean(sub)
-    pass
+    for symbol in df.symbol.unique():
+        subset = df[df["symbol"]==symbol]
+        if len(subset) == 0:
+            print("!!!!!!!!!!!!! length subset:", len(subset))
+        # build array
+        
+        timestamp = subset["timestamp"].values[0] # just first entry as timestamp
+        # symbol already there
+        price = np.median(subset["price"]) # median price
+        quantity = np.median(subset["quantity"]) # median quantity
+        volume = np.sum(subset["quantity"]) # volume equals sum of quantity
+        priceTimesQuantity = np.median(subset["priceTimesQuantity"]) # median priceTimesQuantity
+        totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
+        windowsSize = BLOCKTHRESHOLD
+        # TODO: track averages and set this in comparison, price since start etc
+        column_names = ["timestamp","symbol","price","quantity","volume","priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
+        columns = [timestamp,symbol,price,quantity,volume,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
+        combined.append(columns)
+    # if all symbols processed put them together into one huge df
+    combinedDf = pd.DataFrame(combined, columns=column_names)
+    return combinedDf
 
 def callback(ch, method, properties, body):
     global TMPDICTSTORE, lastTimestamp
@@ -71,6 +93,9 @@ def callback(ch, method, properties, body):
         lastTimestamp = body["TS"]
     if (body["TS"] - lastTimestamp).seconds > BLOCKTHRESHOLD:
         df = pd.DataFrame(TMPDICTSTORE)
+        # apply additional signals, shrink to x second window
+        df = tick2Block(df)
+        
         print("%s, yooo 5 sec durch du spasst. shape df: %s"%(str(body["TS"]),str(df.shape)))
         # send newly created df to queue
         out = df.to_json()
