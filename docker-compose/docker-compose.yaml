@@ -23,6 +23,16 @@ services:
             TELNETPORT: 6023
             RABBITMQHOST: rabbitmq
 
+    postgresql:
+        image: postgres:alpine
+        restart: always
+        ports:
+            - 5432:5432
+        volumes:
+            - psqldata:/var/lib/postgresql/data/pgdata
+        environment:
+            POSTGRES_PASSWORD: huggi678213
+
     blockifier:
         image: jimblockifier:latest
         build: ./customDocker/blockifier
@@ -32,3 +42,19 @@ services:
         restart: on-failure
         environment: 
             RABBITMQHOST: rabbitmq
+    
+    pandas2sql:
+        image: jimpandas2sql:latest
+        build: ./customDocker/df2sql
+        depends_on: 
+            - rabbitmq
+            - blockifier
+            - postgresql
+        restart: on-failure
+        environment: 
+            RABBITMQHOST: rabbitmq
+            POSTGRES_HOST: postgresql
+            POSTGRES_PASSWORD: huggi678213 
+
+volumes:
+    psqldata:

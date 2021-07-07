@@ -27,6 +27,34 @@ queue = channel.queue_declare(queue=CHANNELNAME, durable=True)
 TMPDICTSTORE = []
 lastTimestamp = None
 
+def translateEntries(dictionary):
+    # edits and translates dictionary entries
+    keyz = dictionary.keys()
+    # TS should already be translated
+    if "P" in keyz:
+        dictionary["P"] = float(dictionary["P"])/100 # should be price divided by 1000
+    if "Q" in keyz:
+        dictionary["Q"] = int(dictionary["Q"]) # quantity
+    
+    ## build the dict containing only the info we want
+    newdict = {
+        "timestamp" : dictionary["TS"],
+        "symbol" : dictionary["S"],
+        "price" : dictionary["P"],
+        "quantity" : dictionary["Q"],
+        "priceTimesQuantity" : round(dictionary["P"]*dictionary["Q"])
+    }
+    return newdict
+        
+        
+def tick2Block(df):
+    # takes pandas dataframe containing tick data, and somehow calculates per stock smart values
+    # for symbol in df.symbol.unique:
+        # timestamp -> first timestamp of array
+        # stock -> just take stockname of first
+        # price -> mean(sub)
+    pass
+
 def callback(ch, method, properties, body):
     global TMPDICTSTORE, lastTimestamp
     body = json.loads(body)
@@ -52,6 +80,7 @@ def callback(ch, method, properties, body):
         TMPDICTSTORE = []
         lastTimestamp = body["TS"]
     else:
+        body = translateEntries(body)
         TMPDICTSTORE.append(body)
     
 
