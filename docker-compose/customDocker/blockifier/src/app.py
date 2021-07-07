@@ -3,18 +3,23 @@ import json
 from time import sleep
 from os import environ
 from datetime import datetime
+import pandas as pd
 
 
 CHANNELNAME = "ingestormessages"
+PUBLISHCHANNELNAME = "pandasdfs"
+BLOCKTHRESHOLD = 5 # in seconds
 
 try:
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
 except Exception as e:
     # give it some time
-    sleep(10)
+    sleep(5)
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
 
 channel = connection.channel()
+channel2 = connection.channel()
+channel2.queue_declare(queue=PUBLISHCHANNELNAME, durable=True)
 
 queue = channel.queue_declare(queue=CHANNELNAME, durable=True)
 
@@ -36,8 +41,15 @@ def callback(ch, method, properties, body):
     if not lastTimestamp: # if None
         # set it to current stamp
         lastTimestamp = body["TS"]
-    if (body["TS"] - lastTimestamp).seconds > 5:
-        print("yooo 5 sec durch du spasst",body["TS"])
+    if (body["TS"] - lastTimestamp).seconds > BLOCKTHRESHOLD:
+        df = pd.DataFrame(TMPDICTSTORE)
+        print("%s, yooo 5 sec durch du spasst. shape df: %s"%(str(body["TS"]),str(df.shape)))
+        # send newly created df to queue
+        out = df.to_json()
+        channel.basic_publish(exchange='',
+                routing_key=PUBLISHCHANNELNAME,
+                body=out)
+        TMPDICTSTORE = []
         lastTimestamp = body["TS"]
     else:
         TMPDICTSTORE.append(body)
