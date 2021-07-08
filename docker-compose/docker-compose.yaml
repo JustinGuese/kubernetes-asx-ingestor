@@ -56,5 +56,18 @@ services:
             POSTGRES_HOST: postgresql
             POSTGRES_PASSWORD: huggi678213 
 
+    simplesuperset:
+        image: guestros/apache-superset-simple:latest
+        depends_on: 
+            - postgresql
+        restart:
+            - always
+        ports:
+            - 8088:8088
+        volumes:
+            - superset:/root/.superset/
+
+
 volumes:
     psqldata:
+    superset:

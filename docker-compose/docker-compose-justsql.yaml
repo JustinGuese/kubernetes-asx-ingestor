@@ -3,7 +3,7 @@ services:
 
     postgresql:
         image: postgres:alpine
-        restart: always
+        restart: "always"
         ports:
             - 5432:5432
         volumes:
@@ -11,6 +11,17 @@ services:
         environment:
             POSTGRES_PASSWORD: huggi678213
 
+    simplesuperset:
+        image: guestros/apache-superset-simple:latest
+        depends_on: 
+            - postgresql
+        restart: "always"
+        ports:
+            - 8088:8088
+        volumes:
+            - docker-compose_superset:/root/.superset/
 volumes:
     docker-compose_psqldata:
+        external: true
+    docker-compose_superset:
         external: true

@@ -28,6 +28,13 @@ queue = channel.queue_declare(queue=CHANNELNAME, durable=True)
 TMPDICTSTORE = []
 lastTimestamp = None
 
+### RUNNING VARIABLES ###
+
+# In here variables keeping track of opening price etc are created. They die as soon as the container crashes, and should update on a new day
+CURRENTDAY = datetime.now().date()
+OPENPRICE = 0.0 # for price increase since open
+### END RUNNING VARIABLES ###
+
 def translateEntries(dictionary):
     # edits and translates dictionary entries
     keyz = dictionary.keys()
@@ -70,12 +77,13 @@ def tick2Block(df):
                 price = np.median(subset["price"]) # median price
                 quantity = np.median(subset["quantity"]) # median quantity
                 volume = np.sum(subset["quantity"]) # volume equals sum of quantity
+                noOrders = len(subset) # should be amount of trades in this timeframe
                 priceTimesQuantity = np.median(subset["priceTimesQuantity"]) # median priceTimesQuantity
                 totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
                 windowsSize = BLOCKTHRESHOLD
                 # TODO: track averages and set this in comparison, price since start etc
-                column_names = ["timestamp","symbol","price","quantity","volume","priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
-                columns = [timestamp,symbol,price,quantity,volume,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
+                column_names = ["timestamp","symbol","price","quantity","volume",'noOrders',"priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
+                columns = [timestamp,symbol,price,quantity,volume,noOrders,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
                 combined.append(columns)
             # if all symbols processed put them together into one huge df
             combinedDf = pd.DataFrame(combined, columns=column_names)
