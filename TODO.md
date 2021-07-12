@@ -1,1 +1,4 @@
 - let programs wait for their action
+- only accept stocks above 2$
+- implement new jim signal
+- implement marketsize value
