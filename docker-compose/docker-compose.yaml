@@ -1,7 +1,7 @@
 version: "3.9"
 services: 
     fakeprod:
-        image: jimfakeproducer:latest
+        image: guestros/telnet-tickdata-fakeproducer:latest
         build: ./customDocker/fakeproducer
         restart: on-failure
         environment: 
@@ -12,7 +12,7 @@ services:
         restart: always
 
     ingestor:
-        image: jimingestor:latest
+        image: guestros/telnet-tickdata-ingestor:latest
         build: ./customDocker/ingestor
         depends_on: 
             - fakeprod
@@ -34,7 +34,7 @@ services:
             POSTGRES_PASSWORD: huggi678213
 
     blockifier:
-        image: jimblockifier:latest
+        image: guestros/jim-tickdata-blockifier:latest
         build: ./customDocker/blockifier
         depends_on: 
             - rabbitmq
@@ -44,7 +44,7 @@ services:
             RABBITMQHOST: rabbitmq
     
     pandas2sql:
-        image: jimpandas2sql:latest
+        image: guestros/jim-tickdata-pandas2sql:latest
         build: ./customDocker/df2sql
         depends_on: 
             - rabbitmq
@@ -60,8 +60,7 @@ services:
         image: guestros/apache-superset-simple:latest
         depends_on: 
             - postgresql
-        restart:
-            - always
+        restart: always
         ports:
             - 8088:8088
         volumes:
