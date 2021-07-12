@@ -17,6 +17,9 @@ BLOCKTHRESHOLD = 5 # in seconds
 
 engine = create_engine('postgresql://postgres:%s@%s:5432/postgres'%(environ["POSTGRES_PASSWORD"],environ["POSTGRES_HOST"]))
 
+# grab selection file with marketcaps
+with open("asxmarketcaps.json", "r") as file:
+    ASXMARKETCAPS = json.loads(file.read())
 
 try:
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
@@ -123,7 +126,7 @@ def translateEntries(dictionary):
         
         
 def tick2Block(df):
-
+    global ASXMARKETCAPS, OPENINGPRICES
     combined = []
     # takes pandas dataframe containing tick data, and somehow calculates per stock smart values
     # for symbol in df.symbol.unique:
@@ -158,9 +161,18 @@ def tick2Block(df):
                 priceTimesQuantity = np.median(subset["priceTimesQuantity"]) # median priceTimesQuantity
                 totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
                 windowsSize = BLOCKTHRESHOLD
+                # get marketcap
+                marketcap = ASXMARKETCAPS.get(symbol)
+                # get turnover as pct of marketcap
+                if marketcap is None:
+                    # print("OHOH! We don't have a marketcap for: ",symbol)
+                    turnoverPctOfMarketcap = -1.0
+                else:
+                    turnoverPctOfMarketcap = (100/marketcap) * priceTimesQuantity
+                
                 # TODO: track averages and set this in comparison, price since start etc
-                column_names = ["timestamp","symbol","price","pricePctGainSinceOpen","quantity","volume",'noOrders',"priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
-                columns = [timestamp,symbol,price,pricePctGainSinceOpen,quantity,volume,noOrders,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
+                column_names = ["timestamp","symbol","price","pricePctGainSinceOpen","quantity","volume",'noOrders',"turnover-priceTimesQuantity","turnoverPctOfMarketcap","totalPriceTimesQuantity","windowsSize"]
+                columns = [timestamp,symbol,price,pricePctGainSinceOpen,quantity,volume,noOrders,priceTimesQuantity,turnoverPctOfMarketcap,totalPriceTimesQuantity,windowsSize]
                 combined.append(columns)
             # if all symbols processed put them together into one huge df
             combinedDf = pd.DataFrame(combined, columns=column_names)

@@ -9,6 +9,10 @@ tn_port = str(environ["TELNETPORT"])
 
 CHANNELNAME = "ingestormessages"
 
+# get stocks file to array to limit ingestion to these stocks
+with open('stocks.txt') as f:
+    validstocks = [line.rstrip() for line in f]
+
 try:
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
 except Exception as e:
@@ -40,11 +44,15 @@ def telnet():
         # print(msg)
         # send to rabbitmq
         msg_dict = string2Dict(msg)
-        channel.basic_publish(exchange='',
-            routing_key=CHANNELNAME,
-            body=json.dumps(msg_dict),
-            properties=pika.BasicProperties(
-                delivery_mode = 2, # make message persistent
-            ))
+        if msg_dict.get("S") in validstocks:
+            channel.basic_publish(exchange='',
+                routing_key=CHANNELNAME,
+                body=json.dumps(msg_dict),
+                properties=pika.BasicProperties(
+                    delivery_mode = 2, # make message persistent
+                ))
+        else:
+            # print("stock not in selection: ",str(msg_dict["S"]))
+            pass
         
 telnet()
