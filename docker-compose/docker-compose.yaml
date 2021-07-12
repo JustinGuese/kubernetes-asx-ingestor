@@ -42,6 +42,8 @@ services:
         restart: on-failure
         environment: 
             RABBITMQHOST: rabbitmq
+            POSTGRES_HOST: postgresql
+            POSTGRES_PASSWORD: huggi678213 
     
     pandas2sql:
         image: guestros/jim-tickdata-pandas2sql:latest

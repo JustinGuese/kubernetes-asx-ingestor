@@ -2,7 +2,8 @@ import pika
 import json
 from time import sleep
 from os import environ
-from datetime import datetime
+from datetime import datetime,timedelta
+from sqlalchemy import create_engine,text,exc
 import pandas as pd
 import numpy as np 
 
@@ -10,6 +11,12 @@ import numpy as np
 CHANNELNAME = "ingestormessages"
 PUBLISHCHANNELNAME = "pandasdfs"
 BLOCKTHRESHOLD = 5 # in seconds
+
+
+# create psql connector
+
+engine = create_engine('postgresql://postgres:%s@%s:5432/postgres'%(environ["POSTGRES_PASSWORD"],environ["POSTGRES_HOST"]))
+
 
 try:
     connection = pika.BlockingConnection(pika.ConnectionParameters(host=environ["RABBITMQHOST"]))
@@ -29,11 +36,71 @@ TMPDICTSTORE = []
 lastTimestamp = None
 
 ### RUNNING VARIABLES ###
+TODAYDEBUG = True
+if TODAYDEBUG:
+    OPENINGPRICES = {"currentdate":datetime.strptime('2021-01-24',"%Y-%m-%d").date()}
+else:
+    OPENINGPRICES = {"currentdate":datetime.now().date()}
 
 # In here variables keeping track of opening price etc are created. They die as soon as the container crashes, and should update on a new day
 CURRENTDAY = datetime.now().date()
 OPENPRICE = 0.0 # for price increase since open
 ### END RUNNING VARIABLES ###
+
+def maintainOpeningPrices(df,symbols):
+    global OPENINGPRICES, TODAYDEBUG
+    # first check if we have new stocks, and if so query new OpeningPrices
+    # first check if we have a new day
+    if TODAYDEBUG:
+        TODAY = datetime.strptime('2021-01-24',"%Y-%m-%d").date()
+        TOMORROW = datetime.strptime('2021-01-25',"%Y-%m-%d").date()
+    else:
+        TODAY = datetime.now().date()
+        TOMORROW = TODAY + timedelta(days=1)
+    
+    # print("TODAY: %s, currentdateinfdf: %s"%(str(TODAY), str(OPENINGPRICES.get("currentdate"))))
+    if TODAY != OPENINGPRICES.get("currentdate"):
+        # reset it to new day
+        OPENINGPRICES = {"currentdate":TODAY}
+    else: # if still same day
+        # check if entry exists
+        for symbol in symbols:
+            if symbol in OPENINGPRICES.keys():
+                # if we already have an entry do not update
+                pass
+            else:
+                # if we do not yet have an entry
+                # make db call and set it to that value
+                
+                startingPrice = None
+                try:
+                    with engine.connect() as connection:
+                        query = """SELECT *
+                                    FROM asx_data
+                                    where symbol IN ('%s') and "timestamp" between '%s' and '%s'
+                                    order by "timestamp" asc
+                                    limit 1;""" % (symbol, TODAY.strftime("%Y-%m-%d"), TOMORROW.strftime("%Y-%m-%d"))
+                        result = connection.execute(text(query))
+                        valarray = []
+                        for row in result:
+                            valarray.append(row[2])
+                        if len(valarray) > 1: 
+                            raise Exception("query returned more than one entry, can't be!!!!!")
+                        elif len(valarray) == 0:
+                            startingPrice = None
+                        else:
+                            startingPrice = valarray[0] # should be position?
+                            OPENINGPRICES[symbol] = float(startingPrice)
+                except exc.SQLAlchemyError as e:
+                    print(repr(e))
+                    print("entry not found yet, which should be ok if you just started, but not later!!!!")
+                
+                # if startingprice None then it means we had an error or no response from sql
+                if startingPrice is None:
+                    # usually bc no entry yet in db, 
+                    # if db call fails set it to current value (as this might be the first of the day)
+                    subset = df[df["symbol"]==symbol]
+                    OPENINGPRICES[symbol] = np.median(subset["price"])
 
 def translateEntries(dictionary):
     # edits and translates dictionary entries
@@ -56,6 +123,7 @@ def translateEntries(dictionary):
         
         
 def tick2Block(df):
+
     combined = []
     # takes pandas dataframe containing tick data, and somehow calculates per stock smart values
     # for symbol in df.symbol.unique:
@@ -66,7 +134,10 @@ def tick2Block(df):
     if symbols is not None:
         symbols = symbols.unique()
         if len(symbols) > 0:
-            for symbol in df.symbol.unique():
+            # first check and set opening prices
+            maintainOpeningPrices(df,symbols)
+            # now loop through everything to get matching values
+            for symbol in symbols:
                 subset = df[df["symbol"]==symbol]
                 if len(subset) == 0:
                     print("!!!!!!!!!!!!! length subset:", len(subset))
@@ -75,6 +146,12 @@ def tick2Block(df):
                 timestamp = subset["timestamp"].values[0] # just first entry as timestamp
                 # symbol already there
                 price = np.median(subset["price"]) # median price
+                # price % gain since open calculated with OPENINGPRICES
+                if float(price) == float(OPENINGPRICES[symbol]) or OPENINGPRICES[symbol] == 0.:
+                    # avoid zero division 
+                    pricePctGainSinceOpen = 0.
+                else:
+                    pricePctGainSinceOpen = ((float(price)-OPENINGPRICES[symbol])/OPENINGPRICES[symbol])*100
                 quantity = np.median(subset["quantity"]) # median quantity
                 volume = np.sum(subset["quantity"]) # volume equals sum of quantity
                 noOrders = len(subset) # should be amount of trades in this timeframe
@@ -82,8 +159,8 @@ def tick2Block(df):
                 totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
                 windowsSize = BLOCKTHRESHOLD
                 # TODO: track averages and set this in comparison, price since start etc
-                column_names = ["timestamp","symbol","price","quantity","volume",'noOrders',"priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
-                columns = [timestamp,symbol,price,quantity,volume,noOrders,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
+                column_names = ["timestamp","symbol","price","pricePctGainSinceOpen","quantity","volume",'noOrders',"priceTimesQuantity","totalPriceTimesQuantity","windowsSize"]
+                columns = [timestamp,symbol,price,pricePctGainSinceOpen,quantity,volume,noOrders,priceTimesQuantity,totalPriceTimesQuantity,windowsSize]
                 combined.append(columns)
             # if all symbols processed put them together into one huge df
             combinedDf = pd.DataFrame(combined, columns=column_names)
