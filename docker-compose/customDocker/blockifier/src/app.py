@@ -148,13 +148,13 @@ def tick2Block(df):
                 
                 timestamp = subset["timestamp"].values[0] # just first entry as timestamp
                 # symbol already there
-                price = np.median(subset["price"]) # median price
+                price = np.median(subset["price"])  # median price
                 # price % gain since open calculated with OPENINGPRICES
                 if float(price) == float(OPENINGPRICES[symbol]) or OPENINGPRICES[symbol] == 0.:
                     # avoid zero division 
                     pricePctGainSinceOpenTimesHundred = 0.
                 else:
-                    pricePctGainSinceOpenTimesHundred = ((float(price)-OPENINGPRICES[symbol])/OPENINGPRICES[symbol])*100 * 100 # bc should be times 100
+                    pricePctGainSinceOpenTimesHundred = (100 / OPENINGPRICES[symbol]) * float(price) * 100  # bc should be times 100 for better visibility
                 quantity = np.median(subset["quantity"]) # median quantity
                 volume = np.sum(subset["quantity"]) # volume equals sum of quantity
                 noOrders = len(subset) # should be amount of trades in this timeframe
@@ -181,11 +181,12 @@ def tick2Block(df):
                 combined.append(columns)
             # if all symbols processed put them together into one huge df
             combinedDf = pd.DataFrame(combined, columns=column_names)
+            # print("shape combinedDF: ",combinedDf.shape, combinedDf.columns)
             # add the two combined values and calculate the algorithm1
             averageTurnoverOfAllStocks = np.mean( combinedDf["turnover-priceTimesQuantity"]  ) # should be one value?
             averagePriceGainOfAllStocks = np.mean( combinedDf["pricePctGainSinceOpenTimesHundred"]  )
             # function apply or can we solve this as simple pandas statement?
-            combinedDf["algorithm1"] = (df["pricePctGainSinceOpenTimesHundred"] + ((averageTurnoverOfAllStocks / averagePriceGainOfAllStocks)*10) ) ** 3
+            combinedDf["algorithm1"] = (combinedDf["pricePctGainSinceOpenTimesHundred"] + ((averageTurnoverOfAllStocks / averagePriceGainOfAllStocks)*10) ) ** 3
 
             return combinedDf
     else:
