@@ -64,7 +64,7 @@ services:
             - postgresql
         restart: always
         ports:
-            - 8088:8088
+            - 80:8088
         volumes:
             - superset:/root/.superset/
 
