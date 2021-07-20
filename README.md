@@ -5,3 +5,7 @@ FROM asx_data
 where symbol IN ('YAL') and "timestamp" between '2021-01-24' and '2021-01-25'
 order by "timestamp" asc
 limit 1;
+
+# superset setup
+
+postgresql://postgres:%s@postgresql:5432/postgres
