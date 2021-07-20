@@ -3,7 +3,7 @@ services:
     fakeprod:
         image: guestros/telnet-tickdata-fakeproducer:latest
         build: ./customDocker/fakeproducer
-        restart: on-failure
+        restart: "no" # # bc if done just fuck off 
         environment: 
             PORT: 6023
             
@@ -17,7 +17,7 @@ services:
         depends_on: 
             - fakeprod
             - rabbitmq
-        restart: on-failure
+        restart: always 
         environment: 
             TELNETSERVER: fakeprod
             TELNETPORT: 6023
