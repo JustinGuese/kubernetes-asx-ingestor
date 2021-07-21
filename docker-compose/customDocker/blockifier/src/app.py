@@ -161,6 +161,7 @@ def tick2Block(df):
                 volume = np.sum(subset["quantity"]) # volume equals sum of quantity
                 noOrders = len(subset) # should be amount of trades in this timeframe
                 priceTimesQuantity = np.median(subset["priceTimesQuantity"]) # median priceTimesQuantity
+                turnoverPriceTimesVolume = price * volume
                 totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
                 windowsSize = BLOCKTHRESHOLD
                 # get marketcap
@@ -170,23 +171,23 @@ def tick2Block(df):
                     # print("OHOH! We don't have a marketcap for: ",symbol)
                     turnoverPctOfMarketcap = -1.0
                 else:
-                    turnoverPctOfMarketcap = (100/marketcap) * priceTimesQuantity
+                    turnoverPctOfMarketcap = (100/marketcap) * turnoverPriceTimesVolume
                 ## jim signals
                 # turnover since open calculated in gui
                 # trades since open as well in gui sum
                 # turnover per trade
-                tunoverPerTrade = totalPriceTimesQuantity / noOrders
+                tunoverPerTrade = turnoverPriceTimesVolume / noOrders
 
                 # TODO: track averages and set this in comparison, price since start etc
-                column_names = ["timestamp","symbol","price","pricePctGainSinceOpen" ,"pricePctGainSinceOpenTimesHundred","openingPrice","quantity","volume",'noOrders',"turnover-priceTimesQuantity","turnoverPctOfMarketcap","totalPriceTimesQuantity","tunoverPerTrade","windowsSize"]
-                columns = [timestamp,symbol,price,pricePctGainSinceOpen,pricePctGainSinceOpenTimesHundred,openingPrice,quantity,volume,noOrders,priceTimesQuantity,turnoverPctOfMarketcap,totalPriceTimesQuantity,tunoverPerTrade,windowsSize]
+                column_names = ["timestamp","symbol","price","pricePctGainSinceOpen" ,"pricePctGainSinceOpenTimesHundred","openingPrice","quantity","volume",'noOrders',"turnover","priceTimesQuantity","turnoverPctOfMarketcap","totalPriceTimesQuantity","tunoverPerTrade","windowsSize"]
+                columns = [timestamp,symbol,price,pricePctGainSinceOpen,pricePctGainSinceOpenTimesHundred,openingPrice,quantity,volume,noOrders,turnoverPriceTimesVolume,priceTimesQuantity,turnoverPctOfMarketcap,totalPriceTimesQuantity,tunoverPerTrade,windowsSize]
                 combined.append(columns)
             # all stocks in this 5 second window
             # if all symbols processed put them together into one huge df
             combinedDf = pd.DataFrame(combined, columns=column_names)
             # print("shape combinedDF: ",combinedDf.shape, combinedDf.columns)
             # add the two combined values and calculate the algorithm1
-            averageTurnoverOfAllStocks = np.mean( combinedDf["turnover-priceTimesQuantity"]  ) # should be one value?
+            averageTurnoverOfAllStocks = np.mean( combinedDf["turnover"]  ) # should be one value?
             averagePriceGainOfAllStocks = np.mean( combinedDf["pricePctGainSinceOpen"]  )
             # function apply or can we solve this as simple pandas statement?
             combinedDf["algorithm1"] = (combinedDf["pricePctGainSinceOpen"] + ((averageTurnoverOfAllStocks / averagePriceGainOfAllStocks)*10) ) ** 3
