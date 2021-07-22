@@ -48,6 +48,10 @@ else:
 # In here variables keeping track of opening price etc are created. They die as soon as the container crashes, and should update on a new day
 CURRENTDAY = datetime.now().date()
 OPENPRICE = 0.0 # for price increase since open
+
+# needed for algorithm 1 apply function
+averageTurnoverOfAllBigMoveStocks = 0.
+averagePriceGainOfAllBigMoveStocks = 0.
 ### END RUNNING VARIABLES ###
 
 def maintainOpeningPrices(df,symbols):
@@ -123,10 +127,14 @@ def translateEntries(dictionary):
         "priceTimesQuantity" : round(dictionary["P"]*dictionary["Q"])
     }
     return newdict
+
+def algorithmOne(priceGainOneStock):
+    global averageTurnoverOfAllBigMoveStocks, averagePriceGainOfAllBigMoveStocks
+    return (priceGainOneStock * ((averageTurnoverOfAllBigMoveStocks / averagePriceGainOfAllBigMoveStocks)*10) ) ** 3
         
         
 def tick2Block(df):
-    global ASXMARKETCAPS, OPENINGPRICES
+    global ASXMARKETCAPS, OPENINGPRICES, averageTurnoverOfAllBigMoveStocks, averagePriceGainOfAllBigMoveStocks
     combined = []
     # takes pandas dataframe containing tick data, and somehow calculates per stock smart values
     # for symbol in df.symbol.unique:
@@ -157,11 +165,11 @@ def tick2Block(df):
                     pricePctGainSinceOpen = (100 / OPENINGPRICES[symbol]) * float(price) - 100.  # bc should be times 100 for better visibility
                 pricePctGainSinceOpenTimesHundred = pricePctGainSinceOpen * 100
                 openingPrice = OPENINGPRICES[symbol]
-                quantity = np.median(subset["quantity"]) # median quantity 
+                quantity = round(np.median(subset["quantity"])) # median quantity 
                 volume = np.sum(subset["quantity"]) # volume equals sum of quantity
                 noOrders = len(subset) # should be amount of trades in this timeframe
                 priceTimesQuantity = np.median(subset["priceTimesQuantity"]) # median priceTimesQuantity
-                turnoverPriceTimesVolume = price * volume
+                turnoverPriceTimesVolume = round(price * volume)
                 totalPriceTimesQuantity = np.sum(subset["priceTimesQuantity"]) # median
                 windowsSize = BLOCKTHRESHOLD
                 # get marketcap
@@ -187,10 +195,13 @@ def tick2Block(df):
             combinedDf = pd.DataFrame(combined, columns=column_names)
             # print("shape combinedDF: ",combinedDf.shape, combinedDf.columns)
             # add the two combined values and calculate the algorithm1
-            averageTurnoverOfAllStocks = np.mean( combinedDf["turnover"]  ) # should be one value?
-            averagePriceGainOfAllStocks = np.mean( combinedDf["pricePctGainSinceOpen"]  )
+            # first get all stocks that moved greater than 1.99%
+            bigMovingStocks = combinedDf[combinedDf["pricePctGainSinceOpen"] > 1.99] # .symbol.unique()
+            averageTurnoverOfAllBigMoveStocks = np.mean( bigMovingStocks["turnover"]  ) # should be one value?
+            averagePriceGainOfAllBigMoveStocks = np.mean( bigMovingStocks["pricePctGainSinceOpen"]  )
             # function apply or can we solve this as simple pandas statement?
-            combinedDf["algorithm1"] = (combinedDf["pricePctGainSinceOpen"] + ((averageTurnoverOfAllStocks / averagePriceGainOfAllStocks)*10) ) ** 3
+            combinedDf["algorithm1"] = combinedDf["pricePctGainSinceOpen"].apply(algorithmOne)
+            
             # also replace inf
             combinedDf.replace([np.inf, -np.inf], np.nan, inplace=True)
             # replace nans
