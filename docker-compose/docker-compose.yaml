@@ -15,7 +15,6 @@ services:
         image: guestros/telnet-tickdata-ingestor:latest
         build: ./customDocker/ingestor
         depends_on: 
-            - fakeprod
             - rabbitmq
         restart: always 
         environment: 
