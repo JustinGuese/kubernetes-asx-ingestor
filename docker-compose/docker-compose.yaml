@@ -1,11 +1,11 @@
 version: "3.9"
 services: 
-    fakeprod:
-        image: guestros/telnet-tickdata-fakeproducer:latest
-        build: ./customDocker/fakeproducer
-        restart: "no" # # bc if done just fuck off 
-        environment: 
-            PORT: 6023
+    # fakeprod:
+    #     image: guestros/telnet-tickdata-fakeproducer:latest
+    #     build: ./customDocker/fakeproducer
+    #     restart: "no" # # bc if done just fuck off 
+    #     environment: 
+    #         PORT: 6023
             
     rabbitmq:
         image: rabbitmq:alpine
@@ -19,8 +19,8 @@ services:
             - rabbitmq
         restart: always 
         environment: 
-            TELNETSERVER: fakeprod
-            TELNETPORT: 6023
+            TELNETSERVER: "203.24.211.20"
+            TELNETPORT: 41000  # 6023
             RABBITMQHOST: rabbitmq
 
     postgresql:
