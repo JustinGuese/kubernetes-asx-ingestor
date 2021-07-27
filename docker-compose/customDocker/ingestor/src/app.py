@@ -3,6 +3,7 @@ from os import environ
 import pika
 import json
 from time import sleep
+from datetime import datetime
 
 tn_ip = environ["TELNETSERVER"]
 tn_port = str(environ["TELNETPORT"])
@@ -45,6 +46,8 @@ def telnet():
         # send to rabbitmq
         msg_dict = string2Dict(msg)
         if msg_dict.get("S") in validstocks:
+            # add current timestamp 
+            msg_dict.update({"TS":datetime.now()}) # no utc as we want the australian time
             channel.basic_publish(exchange='',
                 routing_key=CHANNELNAME,
                 body=json.dumps(msg_dict),
