@@ -48,7 +48,7 @@ def telnet():
         if msg_dict.get("S") in validstocks:
             # add current timestamp if not exists -> it exists if we are using the fake data generator
             if msg_dict.get("TS") is None:
-                msg_dict.update({"TS":datetime.now()}) # no utc as we want the australian time
+                msg_dict.update({"TS":str(datetime.now())}) # no utc as we want the australian time
             channel.basic_publish(exchange='',
                 routing_key=CHANNELNAME,
                 body=json.dumps(msg_dict),
