@@ -117,7 +117,7 @@ def translateEntries(dictionary):
         dictionary["P"] = float(dictionary["P"])/100 # should be price divided by 1000
     if "Q" in keyz:
         dictionary["Q"] = int(dictionary["Q"]) # quantity
-    
+
     ## build the dict containing only the info we want
     newdict = {
         "timestamp" : dictionary["TS"],
@@ -219,8 +219,9 @@ def callback(ch, method, properties, body):
     try:
         body["TS"] = datetime.strptime(body["TS"], "%Y-%m-%d %H:%M:%S.%f") # default pandas
     except Exception as e:
-        print(e)
-        print(body["TS"])
+        # sometimes timestamp is in another format
+        body["TS"] = datetime.strptime(body["TS"], "%Y-%m-%d %H:%M:%S")
+
     ch.basic_ack(delivery_tag = method.delivery_tag)
     # next if else time difference big enough execute script
     if not lastTimestamp: # if None
@@ -239,7 +240,9 @@ def callback(ch, method, properties, body):
                     routing_key=PUBLISHCHANNELNAME,
                     body=out)
         TMPDICTSTORE = []
-        lastTimestamp = body["TS"]
+        if type(lastTimestamp) is not str:
+            # bc sometimes we are having the bug that the timestamp is not translated
+            lastTimestamp = body["TS"]
     else:
         body = translateEntries(body)
         TMPDICTSTORE.append(body)
