@@ -50,7 +50,7 @@ def telnet():
             if msg_dict.get("TS") is None:
                 msg_dict.update({"TS":str(datetime.now())}) # no utc as we want the australian time
             # simple mechanism to only submit data after 10.15, bc before that it is just a mess
-            if int(msg_dict["TS"][11:13]) > 10: # little bit tricky, but this is how we get the hour as it is a string
+            if int(msg_dict["TS"][11:13]) > 10: # little bit tricky, but this is how we get the hour as it is a string>
                 channel.basic_publish(exchange='',
                     routing_key=CHANNELNAME,
                     body=json.dumps(msg_dict),
