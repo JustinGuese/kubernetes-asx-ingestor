@@ -48,7 +48,7 @@ def telnet():
         if msg_dict.get("S") in validstocks:
             # add current timestamp if not exists -> it exists if we are using the fake data generator
             if msg_dict.get("TS") is None:
-                msg_dict.update({"TS":str(datetime.now())}) # no utc as we want the australian time
+                msg_dict.update({"TS":str(datetime.now(tz=pytz.timezone('Australia/Sydney')))}) # no utc as we want the australian time
             # next ignore everything before 10:15 in the morning
             # 10 sydney time is 23 utc
             if msg_dict["TS"].hour > 10 or (msg_dict["TS"].hour == 10 and msg_dict["TS"].minute > 15):

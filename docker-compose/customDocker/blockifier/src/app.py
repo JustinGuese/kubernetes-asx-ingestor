@@ -43,10 +43,10 @@ TODAYDEBUG = True
 if TODAYDEBUG:
     OPENINGPRICES = {"currentdate":datetime.strptime('2021-01-24',"%Y-%m-%d").date()}
 else:
-    OPENINGPRICES = {"currentdate":datetime.now().date()}
+    OPENINGPRICES = {"currentdate":datetime.now(tz=pytz.timezone('Australia/Sydney')).date()}
 
 # In here variables keeping track of opening price etc are created. They die as soon as the container crashes, and should update on a new day
-CURRENTDAY = datetime.now().date()
+CURRENTDAY = datetime.now(tz=pytz.timezone('Australia/Sydney')).date()
 OPENPRICE = 0.0 # for price increase since open
 
 # needed for algorithm 1 apply function
@@ -62,7 +62,7 @@ def maintainOpeningPrices(df,symbols):
         TODAY = datetime.strptime('2021-01-24',"%Y-%m-%d").date()
         TOMORROW = datetime.strptime('2021-01-25',"%Y-%m-%d").date()
     else:
-        TODAY = datetime.now().date()
+        TODAY = datetime.now(tz=pytz.timezone('Australia/Sydney')).date()
         TOMORROW = TODAY + timedelta(days=1)
     
     # print("TODAY: %s, currentdateinfdf: %s"%(str(TODAY), str(OPENINGPRICES.get("currentdate"))))
