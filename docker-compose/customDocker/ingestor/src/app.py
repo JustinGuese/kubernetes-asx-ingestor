@@ -4,6 +4,7 @@ import pika
 import json
 from time import sleep
 from datetime import datetime
+import pytz
 
 tn_ip = environ["TELNETSERVER"]
 tn_port = str(environ["TELNETPORT"])
@@ -51,7 +52,7 @@ def telnet():
                 msg_dict.update({"TS":str(datetime.now(tz=pytz.timezone('Australia/Sydney')))}) # no utc as we want the australian time
             # next ignore everything before 10:15 in the morning
             # 10 sydney time is 23 utc
-            if msg_dict["TS"].hour > 10 or (msg_dict["TS"].hour == 10 and msg_dict["TS"].minute > 15):
+            if int(msg_dict["TS"][11:13]) > 10:
                 channel.basic_publish(exchange='',
                     routing_key=CHANNELNAME,
                     body=json.dumps(msg_dict),
