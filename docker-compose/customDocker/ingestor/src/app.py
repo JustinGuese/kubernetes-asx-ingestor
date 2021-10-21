@@ -49,12 +49,15 @@ def telnet():
             # add current timestamp if not exists -> it exists if we are using the fake data generator
             if msg_dict.get("TS") is None:
                 msg_dict.update({"TS":str(datetime.now())}) # no utc as we want the australian time
-            channel.basic_publish(exchange='',
-                routing_key=CHANNELNAME,
-                body=json.dumps(msg_dict),
-                properties=pika.BasicProperties(
-                    delivery_mode = 2, # make message persistent
-                ))
+            # next ignore everything before 10:15 in the morning
+            # 10 sydney time is 23 utc
+            if msg_dict["TS"].hour > 10 or (msg_dict["TS"].hour == 10 and msg_dict["TS"].minute > 15):
+                channel.basic_publish(exchange='',
+                    routing_key=CHANNELNAME,
+                    body=json.dumps(msg_dict),
+                    properties=pika.BasicProperties(
+                        delivery_mode = 2, # make message persistent
+                    ))
         else:
             # print("stock not in selection: ",str(msg_dict["S"]))
             pass
