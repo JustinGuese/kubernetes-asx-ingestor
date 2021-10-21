@@ -4,6 +4,7 @@ import pika
 import json
 from time import sleep
 from datetime import datetime
+import pytz
 
 tn_ip = environ["TELNETSERVER"]
 tn_port = str(environ["TELNETPORT"])
@@ -48,9 +49,10 @@ def telnet():
         if msg_dict.get("S") in validstocks:
             # add current timestamp if not exists -> it exists if we are using the fake data generator
             if msg_dict.get("TS") is None:
-                msg_dict.update({"TS":str(datetime.now())}) # no utc as we want the australian time
-            # simple mechanism to only submit data after 10.15, bc before that it is just a mess
-            if int(msg_dict["TS"][11:13]) > 10: # little bit tricky, but this is how we get the hour as it is a string>
+                msg_dict.update({"TS":str(datetime.now(tz=pytz.timezone('Australia/Sydney')))}) # no utc as we want the australian time
+            # next ignore everything before 10:15 in the morning
+            # 10 sydney time is 23 utc
+            if int(msg_dict["TS"][11:13]) > 10:
                 channel.basic_publish(exchange='',
                     routing_key=CHANNELNAME,
                     body=json.dumps(msg_dict),

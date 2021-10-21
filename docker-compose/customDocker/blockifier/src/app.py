@@ -6,6 +6,7 @@ from datetime import datetime,timedelta
 from sqlalchemy import create_engine,text,exc
 import pandas as pd
 import numpy as np 
+import pytz
 
 
 CHANNELNAME = "ingestormessages"
@@ -43,10 +44,10 @@ TODAYDEBUG = True
 if TODAYDEBUG:
     OPENINGPRICES = {"currentdate":datetime.strptime('2021-01-24',"%Y-%m-%d").date()}
 else:
-    OPENINGPRICES = {"currentdate":datetime.now().date()}
+    OPENINGPRICES = {"currentdate":datetime.now(tz=pytz.timezone('Australia/Sydney')).date()}
 
 # In here variables keeping track of opening price etc are created. They die as soon as the container crashes, and should update on a new day
-CURRENTDAY = datetime.now().date()
+CURRENTDAY = datetime.now(tz=pytz.timezone('Australia/Sydney')).date()
 OPENPRICE = 0.0 # for price increase since open
 
 # needed for algorithm 1 apply function
@@ -62,7 +63,7 @@ def maintainOpeningPrices(df,symbols):
         TODAY = datetime.strptime('2021-01-24',"%Y-%m-%d").date()
         TOMORROW = datetime.strptime('2021-01-25',"%Y-%m-%d").date()
     else:
-        TODAY = datetime.now().date()
+        TODAY = datetime.now(tz=pytz.timezone('Australia/Sydney')).date()
         TOMORROW = TODAY + timedelta(days=1)
     
     # print("TODAY: %s, currentdateinfdf: %s"%(str(TODAY), str(OPENINGPRICES.get("currentdate"))))
@@ -117,7 +118,7 @@ def translateEntries(dictionary):
         dictionary["P"] = float(dictionary["P"])/100 # should be price divided by 1000
     if "Q" in keyz:
         dictionary["Q"] = int(dictionary["Q"]) # quantity
-    
+
     ## build the dict containing only the info we want
     newdict = {
         "timestamp" : dictionary["TS"],
@@ -219,8 +220,9 @@ def callback(ch, method, properties, body):
     try:
         body["TS"] = datetime.strptime(body["TS"], "%Y-%m-%d %H:%M:%S.%f") # default pandas
     except Exception as e:
-        print(e)
-        print(body["TS"])
+        # sometimes timestamp is in another format
+        body["TS"] = datetime.strptime(body["TS"], "%Y-%m-%d %H:%M:%S")
+
     ch.basic_ack(delivery_tag = method.delivery_tag)
     # next if else time difference big enough execute script
     if not lastTimestamp: # if None
@@ -239,7 +241,9 @@ def callback(ch, method, properties, body):
                     routing_key=PUBLISHCHANNELNAME,
                     body=out)
         TMPDICTSTORE = []
-        lastTimestamp = body["TS"]
+        if type(lastTimestamp) is not str:
+            # bc sometimes we are having the bug that the timestamp is not translated
+            lastTimestamp = body["TS"]
     else:
         body = translateEntries(body)
         TMPDICTSTORE.append(body)
