@@ -23,7 +23,7 @@ services:
             RABBITMQHOST: rabbitmq
 
     postgresql:
-        image: postgres:alpine
+        image: postgres:13-alpine
         restart: always
         ports:
             - 5432:5432
