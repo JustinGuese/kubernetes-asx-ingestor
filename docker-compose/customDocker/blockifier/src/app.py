@@ -218,10 +218,10 @@ def callback(ch, method, properties, body):
     body = json.loads(body)
     # convert first to datetime
     try:
-        body["TS"] = datetime.strptime(body["TS"], "%Y-%m-%d %H:%M:%S.%f") # default pandas
+        body["TS"] = datetime.fromisoformat(body["TS"]) # default pandas
     except Exception as e:
         # sometimes timestamp is in another format
-        body["TS"] = datetime.strptime(body["TS"], "%Y-%m-%d %H:%M:%S")
+        body["TS"] = datetime.strptime(body["TS"][:19], "%Y-%m-%d %H:%M:%S")
 
     ch.basic_ack(delivery_tag = method.delivery_tag)
     # next if else time difference big enough execute script
